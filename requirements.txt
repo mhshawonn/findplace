@@ -5,3 +5,5 @@ folium
 fastapi
 uvicorn
 pydantic
+transformers
+torch
