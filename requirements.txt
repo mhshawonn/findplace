@@ -1,0 +1,7 @@
+requests
+pandas
+beautifulsoup4
+folium
+fastapi
+uvicorn
+pydantic
