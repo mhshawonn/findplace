@@ -14,72 +14,84 @@ def main():
     setup_logging()
     
     parser = argparse.ArgumentParser(description="Generate AI summaries from a list of URLs")
-    parser.add_argument("--input", required=True, help="Input file containing URLs (CSV or TXT)")
+    parser.add_argument("--input", required=True, help="Input file containing URLs (CSV)")
     parser.add_argument("--output", required=True, help="Output CSV file")
     
     args = parser.parse_args()
     
-    urls = []
+    summarizer = WebsiteSummarizer()
+    processed_rows = []
+    fieldnames = []
     
-    # Detemine input type
     try:
-        if args.input.endswith('.csv'):
-            with open(args.input, 'r') as f:
-                reader = csv.reader(f)
-                # Assume URL is in the first column or look for header "website" or "url"
-                headers = next(reader, None)
-                url_idx = 0
-                if headers:
-                    # Try to find URL column
-                    lower_headers = [h.lower() for h in headers]
-                    if "website" in lower_headers:
-                        url_idx = lower_headers.index("website")
-                    elif "url" in lower_headers:
-                        url_idx = lower_headers.index("url")
-                    else:
-                        # Reset file pointer if no header, or just accept first col
-                        # For simplicity, if header doesn't look like URL, treat as data?
-                        # Let's simple check if header looks like URL
-                        if not headers[0].startswith("http"):
-                             pass # Header row
-                        else:
-                             urls.append(headers[0]) # No header
-                             
-                for row in reader:
-                    if row and len(row) > url_idx:
-                        url = row[url_idx]
-                        if url and url.startswith("http"):
-                            urls.append(url)
-        else:
-            # Assume text file with one URL per line
-            with open(args.input, 'r') as f:
-                urls = [line.strip() for line in f if line.strip().startswith("http")]
+        with open(args.input, 'r', encoding='utf-8') as f:
+            # First, detect the header
+            sample = f.read(1024)
+            f.seek(0)
+            has_header = csv.Sniffer().has_header(sample)
+            
+            if has_header:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames) if reader.fieldnames else []
                 
+                # Find the URL column
+                url_col = None
+                candidates = ["website", "url", "link", "homepage"]
+                
+                # 1. Exact match
+                for col in fieldnames:
+                    if col.lower() in candidates:
+                        url_col = col
+                        break
+                
+                # 2. Contains match if no exact match
+                if not url_col:
+                    for col in fieldnames:
+                        for cand in candidates:
+                            if cand in col.lower():
+                                url_col = col
+                                break
+                        if url_col: break
+                
+                if not url_col:
+                    logging.error(f"Could not find a URL column (looked for {candidates}). Please rename the column in your CSV.")
+                    return
+
+                logging.info(f"Using '{url_col}' as the URL source.")
+                
+                # Add Summary to fieldnames if not present
+                if "Summary" not in fieldnames:
+                    fieldnames.append("Summary")
+                
+                rows = list(reader)
+                logging.info(f"Found {len(rows)} rows to process.")
+
+                for i, row in enumerate(rows):
+                    url = row.get(url_col)
+                    if url and url.startswith("http"):
+                        logging.info(f"Processing ({i+1}/{len(rows)}): {url}")
+                        summary = summarizer.summarize_url(url)
+                        row["Summary"] = summary
+                    else:
+                        logging.warning(f"Skipping row {i+1}: Invalid URL '{url}'")
+                        row["Summary"] = ""
+                    processed_rows.append(row)
+            
+            else:
+                logging.error("Input CSV must have a header row.")
+                return
+
     except Exception as e:
         logging.error(f"Error reading input file: {e}")
         return
 
-    if not urls:
-        logging.warning("No URLs found in input file.")
-        return
-
-    logging.info(f"Found {len(urls)} URLs to summarize.")
-    
-    summarizer = WebsiteSummarizer()
-    results = []
-    
-    for i, url in enumerate(urls):
-        logging.info(f"Processing ({i+1}/{len(urls)}): {url}")
-        summary = summarizer.summarize_url(url)
-        results.append({"URL": url, "Summary": summary})
-        
     # Write output
     try:
-        with open(args.output, 'w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=["URL", "Summary"])
+        with open(args.output, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerows(results)
-        logging.info(f"Saved results to {args.output}")
+            writer.writerows(processed_rows)
+        logging.info(f"Saved extended results to {args.output}")
     except Exception as e:
         logging.error(f"Error writing output: {e}")
 

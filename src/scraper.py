@@ -4,14 +4,17 @@ from typing import List, Dict, Any
 from .services.nominatim import NominatimService
 from .services.overpass import OverpassService
 from .services.enricher import EnrichmentService
+from .services.summarizer import WebsiteSummarizer
 from .utils.geo import GeoUtils
 
 class Scraper:
-    def __init__(self, enrich: bool = True):
+    def __init__(self, enrich: bool = True, summarize: bool = False):
         self.nominatim = NominatimService()
         self.overpass = OverpassService()
         self.enricher = EnrichmentService()
+        self.summarizer = WebsiteSummarizer() if summarize else None
         self.should_enrich = enrich
+        self.should_summarize = summarize
         
     def scrape(self, search_terms: List[str], location: str) -> List[Dict[str, Any]]:
         logging.info(f"Geocoding location: {location}")
@@ -99,6 +102,16 @@ class Scraper:
             logging.info("Starting enrichment...")
             for b in all_results:
                 self.enricher.enrich_business(b)
+        
+        if self.should_summarize and self.summarizer:
+            logging.info("Starting summarization (this may take a while)...")
+            for b in all_results:
+                website = b.get("website")
+                if website:
+                    logging.info(f"Summarizing {website}...")
+                    b["summary"] = self.summarizer.summarize_url(website)
+                else:
+                    b["summary"] = "No website found"
                 
         return all_results
 

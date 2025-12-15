@@ -6,6 +6,7 @@ function App() {
     const [terms, setTerms] = useState('cafe, restaurant');
     const [location, setLocation] = useState('Soho, London');
     const [enrich, setEnrich] = useState(false);
+    const [summarize, setSummarize] = useState(false);
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -24,7 +25,8 @@ function App() {
                 body: JSON.stringify({
                     terms: termList,
                     location: location,
-                    enrich: enrich
+                    enrich: enrich,
+                    summarize: summarize
                 })
             });
 
@@ -45,7 +47,7 @@ function App() {
         if (!results.length) return;
 
         // Define headers
-        const headers = ['Name', 'Category', 'Phone', 'Website', 'Address Street', 'Address City', 'OSM ID'];
+        const headers = ['Name', 'Category', 'Phone', 'Website', 'Summary', 'Address Street', 'Address City', 'OSM ID'];
 
         // Convert to CSV string
         const csvContent = [
@@ -55,6 +57,7 @@ function App() {
                 `"${(r.category || '').replace(/"/g, '""')}"`,
                 `"${(r.phone || '').replace(/"/g, '""')}"`,
                 `"${(r.website || '').replace(/"/g, '""')}"`,
+                `"${(r.summary || '').replace(/"/g, '""')}"`,
                 `"${(r.address_street || '').replace(/"/g, '""')}"`,
                 `"${(r.address_city || '').replace(/"/g, '""')}"`,
                 r.osm_id
@@ -110,7 +113,18 @@ function App() {
                                 onChange={(e) => setEnrich(e.target.checked)}
                             />
                             <span className="checkbox-custom"></span>
-                            Enrich Data (Crawl Websites)
+                            Enrich Data
+                        </label>
+                    </div>
+                    <div className="form-group checkbox-group">
+                        <label className="toggle-label">
+                            <input
+                                type="checkbox"
+                                checked={summarize}
+                                onChange={(e) => setSummarize(e.target.checked)}
+                            />
+                            <span className="checkbox-custom"></span>
+                            AI Summary (Slow)
                         </label>
                     </div>
                     <button type="submit" className="btn-primary" disabled={loading}>

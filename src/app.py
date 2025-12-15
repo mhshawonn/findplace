@@ -23,11 +23,12 @@ class ScrapeRequest(BaseModel):
     terms: List[str]
     location: str
     enrich: bool = False
+    summarize: bool = False
 
 @app.post("/api/scrape")
 async def scrape_businesses(request: ScrapeRequest):
     try:
-        scraper = Scraper(enrich=request.enrich)
+        scraper = Scraper(enrich=request.enrich, summarize=request.summarize)
         results = scraper.scrape(request.terms, request.location)
         return {"count": len(results), "results": results}
     except Exception as e:

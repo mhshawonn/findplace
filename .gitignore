@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+.venv/
+env/
+.env/
+
+# Environment Variables
+.env
+
+# Distrib
+dist/
+build/
+*.egg-info/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.DS_Store
+
+# Output
+output/
+test_output/
+results/
+*.csv
+*.json
+*.html
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
